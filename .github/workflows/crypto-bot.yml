@@ -23,6 +23,16 @@ jobs:
       run: |
         pip install -r requirements.txt
     
+    - name: Debug environment
+      run: |
+        echo "Python version:"
+        python --version
+        echo "Pip list:"
+        pip list
+        echo "Environment check:"
+        echo "Bot token exists: ${{ secrets.TELEGRAM_BOT_TOKEN != '' }}"
+        echo "Channel ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}"
+    
     - name: Run crypto tracker
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
