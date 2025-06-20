@@ -1,0 +1,31 @@
+name: Crypto Follow Tracker Bot
+
+on:
+  schedule:
+    # Каждый день в 17:00 UTC (20:00 МСК)
+    - cron: '0 17 * * *'
+  workflow_dispatch: # Ручной запуск для тестирования
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+    
+    - name: Run crypto tracker
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+      run: |
+        python main.py
