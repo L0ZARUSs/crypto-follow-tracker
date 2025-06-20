@@ -36,7 +36,7 @@ class CryptoFollowTracker:
         all_subscriptions = []
         all_unsubscriptions = []
         
-        for page in range(1, 3):  # Ограничиваем 2 страницами для скорости
+        for page in range(1, 3):
             try:
                 print(f"🔍 Scraping page {page}...")
                 url = f"{self.base_url}/xdata?page={page}" if page > 1 else f"{self.base_url}/xdata"
@@ -51,7 +51,7 @@ class CryptoFollowTracker:
                 
                 print(f"📊 Page {page}: {len(subscriptions)} subscriptions, {len(unsubscriptions)} unsubscriptions")
                 
-                if page < 2:  # Задержка только между страницами
+                if page < 2:
                     time.sleep(3)
                 
             except Exception as e:
@@ -66,16 +66,12 @@ class CryptoFollowTracker:
         unsubscriptions = []
         
         try:
-            # Простой поиск по тексту
             page_text = soup.get_text()
-            
-            # Поиск паттернов подписок и отписок
             lines = page_text.split('\n')
             
             for line in lines:
                 line = line.strip()
                 if 'Followed' in line and 'Unfollowed' not in line:
-                    # Это подписка
                     parts = line.split('Followed')
                     if len(parts) >= 2:
                         influencer = parts[0].strip()
@@ -90,7 +86,6 @@ class CryptoFollowTracker:
                             })
                 
                 elif 'Unfollowed' in line:
-                    # Это отписка
                     parts = line.split('Unfollowed')
                     if len(parts) >= 2:
                         influencer = parts[0].strip()
@@ -107,7 +102,7 @@ class CryptoFollowTracker:
         except Exception as e:
             print(f"❌ Error extracting data: {e}")
         
-        return subscriptions[:10], unsubscriptions[:5]  # Ограничиваем количество
+        return subscriptions[:10], unsubscriptions[:5]
     
     def format_message(self, subscriptions, unsubscriptions):
         """Форматирование сообщения"""
@@ -119,7 +114,7 @@ class CryptoFollowTracker:
         # Новые подписки
         message += "📈 New Subscriptions:\n"
         if subscriptions:
-            for sub in subscriptions[:5]:  # Максимум 5
+            for sub in subscriptions[:5]:
                 influencer = sub['influencer_name']
                 project_name = sub['project_name']
                 description = sub.get('description', 'Crypto project')
@@ -131,7 +126,7 @@ class CryptoFollowTracker:
         # Отписки
         message += "\n📉 Unsubscriptions:\n"
         if unsubscriptions:
-            for unsub in unsubscriptions[:3]:  # Максимум 3
+            for unsub in unsubscriptions[:3]:
                 influencer = unsub['influencer_name']
                 project_name = unsub['project_name']
                 description = unsub.get('description', 'Crypto project')
@@ -176,4 +171,25 @@ class CryptoFollowTracker:
             
             # Форматирование и отправка
             message = self.format_message(subscriptions, unsubscriptions)
-            success = await self.sen
+            success = await self.send_message(message)
+            
+            if success:
+                print("✅ Crypto Follow Tracker completed successfully!")
+            else:
+                print("❌ Failed to send message")
+                
+        except Exception as e:
+            print(f"❌ Critical error: {e}")
+            raise
+
+async def main():
+    """Главная функция"""
+    try:
+        tracker = CryptoFollowTracker()
+        await tracker.run()
+    except Exception as e:
+        print(f"❌ Fatal error: {e}")
+        exit(1)
+
+if __name__ == "__main__":
+    asyncio.run(main())
