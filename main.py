@@ -1,204 +1,146 @@
-import asyncio
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+import json
 import os
-import time
-import random
-from urllib.parse import urljoin
-import re
+from datetime import datetime
+import telegram
 from telegram import Bot
-from telegram.constants import ParseMode
+import re
 
-class CryptoFollowTracker:
+class SimpleCryptoTracker:
     def __init__(self):
-        self.bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
-        self.channel_id = os.environ.get('TELEGRAM_CHANNEL_ID', '@cryptohobbys')
-        
-        print(f"🔍 Bot token found: {'Yes' if self.bot_token else 'No'}")
-        print(f"🔍 Channel ID: {self.channel_id}")
-        
-        if not self.bot_token:
-            raise ValueError("❌ TELEGRAM_BOT_TOKEN not found!")
-        
+        self.bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+        self.channel_id = os.getenv('TELEGRAM_CHANNEL_ID')
         self.bot = Bot(token=self.bot_token)
-        self.base_url = "https://www.rootdata.com"
-        self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Connection': 'keep-alive',
-        })
-    
-    def get_sample_data(self):
-        """Получение образцовых данных для демонстрации"""
-        subscriptions = [
-            {
-                'influencer_name': 'Anatoly Yakovenko (Solana Founder)',
-                'project_name': 'Luck.io',
-                'description': 'Web3 Gambling Platform'
-            },
-            {
-                'influencer_name': 'Vitalik Buterin (Ethereum Founder)',
-                'project_name': 'Hibachi',
-                'description': 'Decentralized trading protocol'
-            },
-            {
-                'influencer_name': 'Fred Ehrsam',
-                'project_name': 'Merit Systems',
-                'description': 'Stablecoin startup'
-            },
-            {
-                'influencer_name': 'Laura Shin',
-                'project_name': 'Polymarket',
-                'description': 'Prediction market platform'
-            },
-            {
-                'influencer_name': 'Hayden Adams',
-                'project_name': 'MinionLab',
-                'description': 'Data Provisioning Network for AI Training'
-            }
-        ]
         
-        unsubscriptions = [
-            {
-                'influencer_name': 'Mr. Block',
-                'project_name': '0xScope',
-                'description': 'Blockchain analytics platform'
-            },
-            {
-                'influencer_name': 'ZachXBT',
-                'project_name': 'Bubblemaps',
-                'description': 'On-chain analytics tool'
-            }
-        ]
-        
-        return subscriptions, unsubscriptions
-    
-    def get_project_twitter(self, project_name):
-        """Получение Twitter ссылки по названию проекта"""
-        twitter_mapping = {
-            'Luck.io': 'https://twitter.com/luckio_official',
-            'Hibachi': 'https://twitter.com/hibachi_protocol',
-            'Merit Systems': 'https://twitter.com/merit_systems',
-            '0xScope': 'https://twitter.com/0xscope',
-            'Bubblemaps': 'https://twitter.com/bubblemaps',
-            'Polymarket': 'https://twitter.com/polymarket',
-            'MinionLab': 'https://twitter.com/minionlab_ai',
-            'Solana': 'https://twitter.com/solana',
-            'Ethereum': 'https://twitter.com/ethereum'
+        # Простая база знаний для описаний (можно расширить)
+        self.known_influencers = {
+            "Anatoly Yakovenko": "Solana Founder",
+            "Vitalik Buterin": "Ethereum Founder", 
+            "Fred Ehrsam": "Coinbase Co-founder",
+            "Joseph Lubin": "ConsenSys Founder",
+            "Hayden Adams": "Uniswap Founder",
+            "ZachXBT": "On-chain Detective",
+            "David Hoffman": "Bankless Co-founder",
+            "Adam Back": "Blockstream CEO",
+            "Laura Shin": "Crypto Journalist"
         }
         
-        return twitter_mapping.get(project_name)
+        self.known_projects = {
+            "Polymarket": "Prediction Market",
+            "Uniswap": "DEX Protocol",
+            "Solana": "Layer 1 Blockchain",
+            "Ethereum": "Layer 1 Blockchain"
+        }
     
-    def scrape_rootdata(self):
-        """Скрапинг данных с RootData (с fallback на образцовые данные)"""
+    def scrape_latest_follows(self):
+        """Парсинг последних подписок с rootdata.com/xdata"""
+        url = "https://rootdata.com/xdata"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
         try:
-            print("🔍 Attempting to scrape RootData...")
-            
-            response = self.session.get(f"{self.base_url}/xdata", timeout=30)
-            response.raise_for_status()
-            
-            print(f"✅ RootData response: {response.status_code}")
-            print(f"📄 Content length: {len(response.content)} bytes")
-            
+            response = requests.get(url, headers=headers)
             soup = BeautifulSoup(response.content, 'html.parser')
-            page_text = soup.get_text()
             
-            # Простая проверка наличия данных
-            if 'Followed' in page_text or 'Latest Updates' in page_text:
-                print("✅ Found relevant data on RootData")
-                # Здесь можно добавить более сложный парсинг
-                # Пока используем образцовые данные
-                return self.get_sample_data()
-            else:
-                print("⚠️ No relevant data found, using sample data")
-                return self.get_sample_data()
-                
+            follows = []
+            
+            # Парсинг данных (нужно будет адаптировать под реальную структуру HTML)
+            # Это пример структуры, которую мы видели на сайте
+            follow_items = soup.find_all('div', class_='follow-item')  # Примерный селектор
+            
+            for item in follow_items:
+                try:
+                    influencer = item.find('span', class_='influencer-name').text.strip()
+                    project = item.find('span', class_='project-name').text.strip()
+                    
+                    follows.append({
+                        'influencer': influencer,
+                        'project': project,
+                        'type': 'follow',
+                        'date': datetime.now().strftime('%Y-%m-%d')
+                    })
+                except:
+                    continue
+            
+            return follows
+            
         except Exception as e:
-            print(f"⚠️ Error scraping RootData: {e}")
-            print("🔄 Falling back to sample data")
-            return self.get_sample_data()
+            print(f"Error scraping data: {e}")
+            return []
     
-    def format_message(self, subscriptions, unsubscriptions):
+    def get_twitter_link(self, name, is_project=False):
+        """Генерация Twitter ссылки (можно улучшить через поиск)"""
+        # Простая логика для генерации Twitter ссылок
+        clean_name = name.replace(' ', '').lower()
+        if is_project:
+            return f"https://twitter.com/{clean_name}"
+        else:
+            # Для инфлюенсеров можно использовать известные хэндлы
+            known_handles = {
+                "Vitalik Buterin": "VitalikButerin",
+                "Anatoly Yakovenko": "aeyakovenko", 
+                "Fred Ehrsam": "FEhrsam",
+                "Joseph Lubin": "ethereumJoseph",
+                "Hayden Adams": "haydenzadams",
+                "ZachXBT": "zachxbt"
+            }
+            handle = known_handles.get(name, clean_name)
+            return f"https://twitter.com/{handle}"
+    
+    def format_message(self, follows_data):
         """Форматирование сообщения для Telegram"""
-        date_str = datetime.now().strftime("%d.%m.%Y")
+        if not follows_data:
+            return None
+            
+        today = datetime.now().strftime('%d.%m.%Y')
         
-        message = f"📅 FollowTracker — {date_str}\n"
-        message += "🧠 Daily Data:\n\n"
+        message = f"""📅 FollowTracker — {today}
+🧠 Daily Data:
+
+📈 New Subscriptions:"""
         
-        # Новые подписки
-        message += "📈 New Subscriptions:\n"
-        if subscriptions:
-            for sub in subscriptions:
-                influencer = sub['influencer_name']
-                project_name = sub['project_name']
-                description = sub.get('description', 'Crypto project')
-                
-                # Получаем Twitter ссылку
-                twitter_link = self.get_project_twitter(project_name)
-                
-                if twitter_link:
-                    project_text = f"[{project_name}]({twitter_link}) ({description})"
-                else:
-                    project_text = f"{project_name} ({description})"
-                
-                message += f"+ {influencer} → {project_text}\n"
-        else:
-            message += "No new subscriptions detected today\n"
-        
-        # Отписки
-        message += "\n📉 Unsubscriptions:\n"
-        if unsubscriptions:
-            for unsub in unsubscriptions:
-                influencer = unsub['influencer_name']
-                project_name = unsub['project_name']
-                description = unsub.get('description', 'Crypto project')
-                
-                # Получаем Twitter ссылку
-                twitter_link = self.get_project_twitter(project_name)
-                
-                if twitter_link:
-                    project_text = f"[{project_name}]({twitter_link}) ({description})"
-                else:
-                    project_text = f"{project_name} ({description})"
-                
-                message += f"- {influencer} ← {project_text}\n"
-        else:
-            message += "No unsubscriptions detected today\n"
+        # Ограничиваем до 10 записей, чтобы не превысить лимит Telegram
+        for follow in follows_data[:10]:
+            influencer = follow['influencer']
+            project = follow['project']
+            
+            # Получаем описания
+            influencer_desc = self.known_influencers.get(influencer, "Crypto Influencer")
+            project_desc = self.known_projects.get(project, "Crypto Project")
+            
+            # Получаем Twitter ссылки
+            influencer_twitter = self.get_twitter_link(influencer, False)
+            project_twitter = self.get_twitter_link(project, True)
+            
+            # Форматируем строку
+            message += f"\n+ [{influencer}]({influencer_twitter}) ({influencer_desc}) → [{project}]({project_twitter}) - {project_desc}"
         
         # Статистика
-        message += f"\n📊 Daily Stats:\n"
-        message += f"- Total new subscriptions: {len(subscriptions)}\n"
-        message += f"- Total unsubscriptions: {len(unsubscriptions)}\n"
+        message += f"\n\n📊 Daily Stats:"
+        message += f"\n- Total new subscriptions: {len(follows_data)}"
         
-        if subscriptions:
+        # Самый активный инфлюенсер
+        if follows_data:
             influencer_counts = {}
-            for sub in subscriptions:
-                name = sub['influencer_name'].split('(')[0].strip()
-                influencer_counts[name] = influencer_counts.get(name, 0) + 1
+            for follow in follows_data:
+                inf = follow['influencer']
+                influencer_counts[inf] = influencer_counts.get(inf, 0) + 1
             
-            most_active = max(influencer_counts.items(), key=lambda x: x[1])
-            if most_active[1] > 1:
-                message += f"- Most active influencer: {most_active[0]} ({most_active[1]} subscriptions)"
-            else:
-                message += f"- Most active influencer: Multiple influencers (1 subscription each)"
-        else:
-            message += f"- Most active influencer: N/A"
+            most_active = max(influencer_counts, key=influencer_counts.get)
+            count = influencer_counts[most_active]
+            message += f"\n- Most active influencer: {most_active} ({count} subscriptions)"
         
         return message
     
-    async def send_message(self, message):
-        """Отправка сообщения в Telegram"""
+    def send_to_telegram(self, message):
+        """Отправка в Telegram канал"""
         try:
-            print("📤 Sending message to Telegram...")
-            print(f"📝 Message length: {len(message)} characters")
-            
-            await self.bot.send_message(
+            self.bot.send_message(
                 chat_id=self.channel_id,
                 text=message,
-                parse_mode=ParseMode.MARKDOWN,
+                parse_mode='Markdown',
                 disable_web_page_preview=True
             )
             print("✅ Message sent successfully!")
@@ -207,42 +149,31 @@ class CryptoFollowTracker:
             print(f"❌ Error sending message: {e}")
             return False
     
-    async def run(self):
-        """Основной метод запуска"""
-        try:
-            print("🚀 Starting Crypto Follow Tracker...")
+    def run(self):
+        """Основной метод"""
+        print("🚀 Starting Crypto Follow Tracker...")
+        
+        # Парсим данные
+        follows = self.scrape_latest_follows()
+        
+        if follows:
+            print(f"📊 Found {len(follows)} new follows")
             
-            # Получение данных
-            subscriptions, unsubscriptions = self.scrape_rootdata()
+            # Форматируем сообщение
+            message = self.format_message(follows)
             
-            print(f"📊 Data collected: {len(subscriptions)} subscriptions, {len(unsubscriptions)} unsubscriptions")
-            
-            # Форматирование сообщения
-            message = self.format_message(subscriptions, unsubscriptions)
-            
-            # Отправка в Telegram
-            success = await self.send_message(message)
-            
-            if success:
-                print("✅ Crypto Follow Tracker completed successfully!")
+            if message:
+                # Отправляем в Telegram
+                success = self.send_to_telegram(message)
+                if success:
+                    print("🎉 Daily report sent!")
+                else:
+                    print("❌ Failed to send report")
             else:
-                print("❌ Failed to send message")
-                
-        except Exception as e:
-            print(f"❌ Critical error in run(): {e}")
-            raise
-
-async def main():
-    """Главная функция"""
-    try:
-        print("🎯 Initializing Crypto Follow Tracker...")
-        tracker = CryptoFollowTracker()
-        await tracker.run()
-        print("🎉 All done!")
-    except Exception as e:
-        print(f"❌ Fatal error in main(): {e}")
-        exit(1)
+                print("⚠️ No message to send")
+        else:
+            print("📭 No new follows found")
 
 if __name__ == "__main__":
-    print("🚀 Starting application...")
-    asyncio.run(main())
+    tracker = SimpleCryptoTracker()
+    tracker.run()
